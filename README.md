@@ -517,7 +517,7 @@ After running the pipeline:
 ## 📧 Support
 
 For issues or questions:
-- **GitHub Issues:** https://github.com/crypticwisdom/nifi-minio-spark-etl/issues
+- **GitHub Issues:** https://github.com/crypticwisdom/nifi-spark-minio-etl/issues
 - **Documentation:** This README
 - **Logs:** `docker compose logs [service-name]`
 
