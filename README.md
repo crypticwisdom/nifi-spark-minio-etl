@@ -323,6 +323,7 @@ For clean flow management, auto-terminate unused relationships:
 **PutS3Object:**
 - Auto-terminate: failure, success
 
+![NIFI Processors](./assets/nifi-screenshot.png)
 ---
 
 ## ⚡ Spark Processing
