@@ -12,6 +12,10 @@ RUN chmod a+x /opt/decom.sh
 # Copy local JARs to Spark's default jars directory
 COPY ./jars/*.jar /opt/spark/jars/
 
+# ===== Download AWS JAR during build (instead of copying it) =====
+RUN curl -L -o /opt/spark/jars/aws-java-sdk-bundle-1.12.262.jar https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.262/aws-java-sdk-bundle-1.12.262.jar
+
+
 # Copy Spark scripts
 COPY ./spark-scripts /opt/spark/work-dir
 

@@ -1,247 +1,279 @@
-# Doumentation
-...
+# 📘 **ETL Pipeline Documentation — Apache NiFi → MinIO → Apache Spark (Dockerized)**
 
-
-# **📘 Data Ingestion Layer — Apache NiFi (Short Overview)**
-
-For the ingestion stage of this ETL pipeline, I used **Apache NiFi** to move raw CSV files into the data lake and convert them into **Parquet** before storage. NiFi was chosen to provide a clean separation between ingestion and transformation, ensuring a modular and operationally reliable pipeline.
-
-### **Why NiFi Instead of Ingesting Directly with Spark**
-
-* **Dedicated ingestion tool:** NiFi handles file detection, movement, retries, and provenance more effectively than Spark.
-* **Operational visibility:** NiFi’s UI provides real-time tracking of each file and clear debugging if errors occur.
-* **Pre-processing advantage:** Converting CSV → Parquet at the ingestion layer improves downstream Spark performance and reduces storage footprint.
-* **Loose coupling:** Decouples ingestion from transformation, following best-practice pipeline design.
+This repository contains a fully containerized ETL pipeline that ingests CSV files, converts them to Parquet using Apache NiFi, stores them in MinIO (S3-compatible object store), and transforms them using Apache Spark.
+It demonstrates a clean separation of concerns across **ingestion**, **storage**, and **processing** layers—aligned with real-world data engineering practices.
 
 ---
 
-# **NiFi Flow Summary**
+# 1️⃣ **Prerequisites**
 
-The ingestion pipeline follows a simple but effective flow:
+Before running the project, ensure the following are installed on your system:
+
+### ✔ Docker
+
+### ✔ Docker Compose
+
+### ✔ At least 4GB RAM allocated to Docker
+
+### ✔ Stable internet (images + JARs downloaded during build)
+
+---
+
+# 2️⃣ **Architecture Overview**
+
+| Component          | Purpose                                                                        |
+| ------------------ | ------------------------------------------------------------------------------ |
+| **Apache NiFi**    | Ingestion pipeline. Detects CSV files → Converts to Parquet → Uploads to MinIO |
+| **MinIO**          | Object storage serving as the project’s Data Lake                              |
+| **Apache Spark**   | Reads Parquet from MinIO → Cleans, normalizes, and transforms data             |
+| **Docker Compose** | Orchestrates the entire environment                                            |
+
+**High-level flow:**
 
 ```
-ListFile → FetchFile → ConvertRecord → PutS3Object
+CSV Files → NiFi → MinIO (raw-zone/) → Spark → MinIO (clean-zone/)
 ```
 
-### **Processor Breakdown**
+---
 
-* **ListFile**
-  Detects new CSV files placed in the ingestion directory mounted at `/data/input`.
+# 3️⃣ **Why These Technologies?**
 
-* **FetchFile**
-  Retrieves the file content identified by ListFile.
+### ⭐ **Apache NiFi**
 
-* **ConvertRecord (CSV → Parquet)**
-  Uses `CSVReader` and `ParquetRecordSetWriter` to convert raw CSV into optimized Parquet format.
+Used because it's a production-grade ingestion tool:
 
-* **PutS3Object (MinIO Upload)**
-  Stores the transformed Parquet file in the MinIO **raw-parquet** bucket.
-  `Object Key: ${filename:replace('.csv', '.parquet')}` ensures correct naming.
+* Visual development (drag-drop flows)
+* Automatic file detection, retries, provenance tracking
+* Lightweight transformations (CSV → Parquet)
+* S3 compatibility via PutS3Object
+
+This avoids tightly coupling ingestion with Spark, giving a more modular architecture.
+
+### ⭐ **MinIO**
+
+* S3-compatible object storage
+* Easy to run locally
+* Ideal for data lake patterns
+* Works seamlessly with Spark using the S3A connector
+
+### ⭐ **Apache Spark**
+
+Chosen for:
+
+* Large-scale ETL capability
+* Built-in Parquet optimizations
+* Efficient handling of semi-structured financial/transactional data
+* Ability to run distributed jobs (even with 1-2 workers)
+
+### ⭐ **Parquet Format**
+
+Parquet is used instead of CSV because:
+
+* Columnar (fast analytical reads)
+* Highly compressed
+* Schema-aware
+* Ideal for Spark processing
+* Smaller storage footprint in MinIO
 
 ---
 
-# **Result**
+# 4️⃣ **Dataset Summary (Transactional Credit-Risk Data)**
 
-NiFi reliably ingests raw CSV files, performs lightweight pre-processing, and writes clean Parquet files into the data lake, providing a structured and efficient foundation for Spark transformations.
+The CSV represents **loan applications and credit-risk attributes**, such as:
 
+* Demographics (Age, Gender, Marital Status)
+* Financial metrics (Income, Assets, Credit Score)
+* Loan attributes (Amount, Purpose, Employment Status)
+* Behavior (Payment History, Defaults)
+* Risk Rating (Low/Medium/High)
 
-
-
-Below is a **clean, professional, concise** documentation you can include in your project’s README.
-It covers:
-
-* Architecture overview
-* Why you chose this approach
-* How to set up & run the environment
-* NiFi flow (including exporting/importing the XML template)
-* Spark transformation stage
-* Brief description of the transactional dataset
-* Why Parquet format was used
-
-It is intentionally short, direct, and “assessment-ready”.
+Spark later cleans & normalizes these fields to make them analytics-ready.
 
 ---
 
-# 📘 **ETL Pipeline Documentation (NiFi → MinIO → Spark Processing)**
+# 5️⃣ **Set Up & Run the Environment**
 
-## 1. **Overview**
+## ► Step 1: Clone the Repository
 
-This project implements a simple but production-aligned ETL pipeline using:
-
-* **Apache NiFi** → ingestion & file orchestration
-* **MinIO (S3-compatible storage)** → staging and clean data zones
-* **Apache Spark** → data cleaning, normalization, and transformation
-* **Docker Compose** → environment orchestration
-
-The goal is to ingest raw CSV files, convert them into an efficient columnar format (Parquet), and run downstream transformations that prepare the dataset for analytics or modeling.
-
----
-
-## 2. **Why This Architecture Was Chosen**
-
-### **Why NiFi for ingestion**
-
-NiFi provides a flow-based, low-overhead ingestion layer with:
-
-* Visual drag-and-drop dataflow configuration
-* Built-in processors for CSV handling
-* Native integration with S3-compatible storage (MinIO)
-* Backpressure, retries, provenance tracking
-* Easy file routing and extension management
-
-Instead of manually loading files with Spark, NiFi provides a **controlled, trackable, and auditable** ingestion pipeline that aligns with real-world data engineering best practices.
-
-### **Why Spark for processing**
-
-Spark is used because:
-
-* It handles semi-structured financial/transactional data efficiently
-* Supports scalable file-based ETL processing
-* Provides built-in column operations for cleaning and transformation
-* Integrates seamlessly with MinIO through the S3A connector
-
-### **Why Parquet over CSV**
-
-Parquet was chosen over CSV because:
-
-* Columnar format → optimized for analytics
-* Highly compressed → reduces MinIO storage cost
-* Supports schema evolution
-* Faster read performance
-* Better for Spark-based processing
-
-CSV is ideal for ingestion, but Parquet is the preferred format for transformation and downstream consumption.
-
----
-
-## 3. **Dataset Summary (Transactional / Credit-Risk Data)**
-
-The dataset represents **loan and financial risk assessment data**.
-Each row contains attributes such as:
-
-* Customer demographics (Age, Gender, Marital Status)
-* Financial behavior (Income, Credit Score, Assets)
-* Loan details (Loan Amount, Purpose, Employment Status, DTI Ratio)
-* Historical indicators (Payment History, Previous Defaults)
-* Risk Rating (low, medium, high)
-
-The pipeline cleans, normalizes, and prepares this data so it can be used for:
-
-* Risk scoring
-* Creditworthiness analysis
-* Exploratory analytics
-* Model development
-
----
-
-## 4. **Running the Project (Docker Compose)**
-
-### **1. Clone the repository**
-
-```
-git clone <your repository>
-cd <project-folder>
+```bash
+git clone https://github.com/crypticwisdom/nifi-minio-spark-etl.git
+cd nifi-minio-spark-etl
 ```
 
-### **2. Build and start the environment**
+## ► Step 2: Build & Start All Services
 
-```
+```bash
 docker compose build
 docker compose up -d
 ```
 
-### **3. Access the services**
+## 📌 Build Time
 
-| Service         | URL                                            |
-| --------------- | ---------------------------------------------- |
-| NiFi UI         | [http://localhost:8443](http://localhost:8443) |
-| Spark Master UI | [http://localhost:8080](http://localhost:8080) |
-| MinIO Console   | [http://localhost:9001](http://localhost:9001) |
+The initial build (Spark image + JAR downloads) takes:
 
-### **4. Upload CSVs for ingestion**
+⏱ **~25–30 minutes**
+![Docker Build](./assets/docker-build.png)
+---
 
-Place CSV files into:
+# 6️⃣ **Accessing the Services**
+
+| Service             | URL                                            |
+| ------------------- | ---------------------------------------------- |
+| **NiFi UI**         | [http://localhost:8443](http://localhost:8443) |
+| **Spark Master UI** | [http://localhost:8080](http://localhost:8080) |
+| **MinIO Console**   | [http://localhost:9001](http://localhost:9001) |
+
+Default MinIO credentials:
 
 ```
-./data/input/
+User: minioadmin
+Pass: minioadmin
 ```
-
-NiFi automatically picks them up and writes the processed Parquet files to MinIO.
 
 ---
 
-## 5. **NiFi Flow**
+# 7️⃣ **NiFi Ingestion Pipeline**
 
-### **Processors Used**
+## 📌 NiFi Flow Design
 
-* **GetFile** → Reads CSVs from local mounted directory
-* **UpdateAttribute** → Renames extension to `.parquet`
-* **ConvertRecord** → Converts CSV → Parquet
-* **PutS3Object** → Writes parquet data into MinIO bucket (`raw-zone/`)
 
-### **NiFi Template**
-
-You can import the NiFi flow template (.xml) manually:
-
-**NiFi → Operate Palette → Upload Template → Choose XML → Add to Canvas**
-
-This ensures the ingestion flow is fully reproducible when shared through GitHub.
-
-> Store your template under:
-> `nifi/templates/ingestion-flow.xml`
+```
+ListFile → FetchFile → ConvertRecord → PutS3Object
+```
+## Screenshot of NIFI Processors
+![NIFI Processing Data ](./assets/nifi-screenshot.png)
 
 ---
 
-## 6. **Spark Processing Stage**
+## 📘 **Processor Breakdown**
 
-### **How to run a Spark job**
+### ✔ ListFile
 
-Enter the PySpark client container:
+Scans `./data/input` (mounted to NiFi as `/data/input`) for new CSVs.
+
+### ✔ FetchFile
+
+Retrieves file content into FlowFile.
+
+### ✔ ConvertRecord
+
+* CSVReader → parses CSV
+* ParquetRecordSetWriter → writes Parquet
+
+### ✔ PutS3Object
+
+Writes the Parquet file to MinIO bucket:
 
 ```
+raw-zone/
+```
+
+---
+
+## 📸 **Include your NiFi Screenshots here**
+
+* Canvas view
+* Processor configuration
+* Successful flowfile provenance
+
+---
+
+## 📥 **Importing the NiFi Template (.xml)**
+
+If recruiters want the ready-made workflow:
+
+```
+NiFi UI → Operate Palette/Right click → select "Upload Template" → Choose CSV-Extraction_ingestion_Layer_.xml from this directory → Add to Canvas
+```
+
+The template is located at:
+
+```
+nifi/templates/CSV-Extraction_ingestion_Layer_.xml
+```
+
+This ensures the ETL flow is reproducible across environments.
+
+---
+
+# 8️⃣ **Spark Processing**
+
+You can process the data either:
+
+### ✔ Through NiFi → Parquet → Spark
+After NIFI ingest data into minio bucket 'raw-zone.
+
+## ▶ Enter Spark client container
+
+```bash
 docker exec -it pyspark-client bash
 ```
 
-Run the ETL script:
+## ▶ Run your Spark ETL job
 
+```bash
+spark-submit \
+  --master spark://spark-master:7077 \
+  processor.py
 ```
+
+OR
+
+### ✔ (Fallback Option) **Directly with Spark** if NiFi isn't available
+
+---
+
+## ▶ Enter Spark client container
+
+```bash
+docker exec -it pyspark-client bash
+```
+
+## ▶ Run your Spark ETL job
+
+```bash
 spark-submit \
   --master spark://spark-master:7077 \
   process-csv.py
 ```
 
-### **What the Spark job does**
+---
 
-* Reads Parquet/CSV from MinIO through S3A
-* Trims whitespace and standardizes text fields
-* Normalizes categorical values (lowercase, underscores)
-* Converts numeric fields to proper types
-* Handles missing values
-* Encodes risk rating into numeric values
-* Writes cleaned dataset into:
-  `s3a://clean-zone/cleaned-csv-loans/`
+## 📘 Spark Script (Summary of Logic)
 
-Transforms the dataset into a clean, analytics-ready format.
+Your Spark job performs:
+
+* Reading Parquet files from MinIO using S3A
+* Casting numeric columns properly
+* Standardizing text fields (lowercase, trim)
+* Handling missing values
+* Computing derived fields (encoded risk, cleaned categories)
+* Writing cleaned output to MinIO:
+
+```
+s3a://clean-zone/
+```
 
 ---
 
-## 7. **Project Structure**
+# 9️⃣ **Project Structure**
 
 ```
 project/
 │
 ├── docker-compose.yml
+├── Dockerfile
+├── CSV-Extraction_Ingestion_Layer_.xml
 ├── spark-scripts/
 │   ├── Dockerfile
-│   └── spark-scripts/
-│        └── process-csv.py
+│        └── processor.py   # Run this for processing store parquet on MINIO
+│        └── process-csv.py # Run this to avoid the NIFI stress, and process csv data directly
 │
 ├── nifi/
-│   └── templates/
-│        └── ingestion-flow.xml
+│   └── nifi_data/
 │
 ├── data/
-│   └── input/          # Files NiFi ingests
+│   └── input/       # Drop CSV files here
 │
 └── minio/
     └── minio_data/
@@ -249,10 +281,37 @@ project/
 
 ---
 
-## 8. **Conclusion**
+# 🔟 **Alternative Path (If NiFi Is Tedious to Configure)**
 
-This ETL pipeline demonstrates a realistic, scalable approach to handling financial/credit-risk transactional data.
-It separates ingestion, storage, and processing layers — closely matching modern data engineering practices used in production environments.
+A fallback PySpark script (`process_csv.py`) is also included.
 
-NiFi handles the ingestion layer, Spark performs scalable transformations, and MinIO provides a flexible data lake environment.
-The decision to use Parquet ensures efficient downstream computation, lower storage cost, and enhanced performance for big-data processing.
+It:
+
+* Reads raw CSV directly
+* Cleans & transforms
+* Writes Parquet directly to MinIO
+
+Recruiters can run it without setting up NiFi:
+
+```bash
+spark-submit \
+  --master spark://spark-master:7077 \
+  process-csv.py
+```
+
+This ensures the project is **still fully testable even without NiFi running**.
+
+---
+
+# 1️⃣1️⃣ **Conclusion**
+
+This project demonstrates:
+
+* **Proper separation of ingestion → storage → transformation layers**
+* Use of **NiFi** for production-like ingestion flows
+* Use of **Parquet** for optimized analytics
+* Integration of **Spark** with S3-compatible storage
+* Containerized, self-contained environment suitable for local or demo deployments
+* A clean, modular ETL implementation that mirrors real-world data engineering pipelines
+
+
