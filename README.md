@@ -524,4 +524,4 @@ For issues or questions:
 
 ---
 
-**Built with ❤️ for demonstrating modern data engineering to INIFINION**
+**Built with ❤️ for demonstrating modern data engineering**
