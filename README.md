@@ -135,7 +135,7 @@ All services should show status as `Up`.
 
 ### 1. MinIO Configuration
 
-**Access MinIO Console:** http://localhost:9001
+**Access MinIO Console:** http://localhost:9010
 
 **Login credentials:**
 ```
